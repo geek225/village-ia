@@ -1,0 +1,42 @@
+{
+  "id": "/",
+  "name": "Village IA — Le Sanctuaire des Agents & Esprits IA",
+  "short_name": "Village IA",
+  "description": "Un village interactif multi-agents où l'intelligence artificielle moderne s'enracine dans la sagesse et les masques sacrés de Côte d'Ivoire.",
+  "lang": "fr-FR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#14243e",
+  "theme_color": "#14243e",
+  "categories": ["productivity", "utilities", "education"],
+  "icons": [
+    {
+      "src": "/assets/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
+
