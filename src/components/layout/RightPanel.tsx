@@ -564,11 +564,22 @@ export function RightPanel({
                           <div className="message-artifacts-quicklink">
                             <button
                               className="view-artifacts-btn"
-                              onClick={() => setActiveTab('artifacts')}
+                              onClick={() => {
+                                const playable = msg.artifacts?.find(a => a.isPlayableApp)
+                                if (playable && onOpenPlayground) {
+                                  onOpenPlayground(playable)
+                                } else {
+                                  setActiveTab('artifacts')
+                                }
+                              }}
                               title="Voir et exécuter les extraits de code dans le Studio"
                             >
-                              <Code2 size={12} />
-                              <span>{msg.artifacts.length} artefact(s) de code généré(s) — Voir dans le Studio ↗</span>
+                              {msg.artifacts.some(a => a.isPlayableApp) ? <Gamepad2 size={13} /> : <Code2 size={12} />}
+                              <span>
+                                {msg.artifacts.some(a => a.isPlayableApp)
+                                  ? `🎮 Jouer immédiatement à ${msg.artifacts.find(a => a.isPlayableApp)?.title || 'l\'application'} ↗`
+                                  : `${msg.artifacts.length} artefact(s) de code généré(s) — Voir dans le Studio ↗`}
+                              </span>
                             </button>
                           </div>
                         )}

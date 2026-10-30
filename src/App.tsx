@@ -256,6 +256,16 @@ export function App() {
               },
               ...prev,
             ])
+
+            // Si un jeu ou une application exécutable a été créé, ouvrons immédiatement le Grand Écran / Playground !
+            if (finalArtifacts && finalArtifacts.length > 0) {
+              const playableApp = finalArtifacts.find(a => a.isPlayableApp) || (finalArtifacts[0].language === 'html' ? finalArtifacts[0] : null)
+              if (playableApp) {
+                setTimeout(() => {
+                  setPlaygroundArtifact(playableApp)
+                }, 800)
+              }
+            }
           }
           break
 

@@ -903,14 +903,37 @@ export class AIRegistry {
     executionTimeMs: number
   }> {
     const stepStartTime = Date.now()
+
+    const isCodeOrAppRequest =
+      params.stepInstruction.includes('APPLICATION') ||
+      params.stepInstruction.includes('JEU') ||
+      params.stepInstruction.includes('html') ||
+      params.userPrompt.toLowerCase().includes('jeu') ||
+      params.userPrompt.toLowerCase().includes('game') ||
+      params.userPrompt.toLowerCase().includes('code') ||
+      params.userPrompt.toLowerCase().includes('app') ||
+      params.userPrompt.toLowerCase().includes('calcul') ||
+      params.userPrompt.toLowerCase().includes('tetris') ||
+      params.userPrompt.toLowerCase().includes('snake') ||
+      params.userPrompt.toLowerCase().includes('rally') ||
+      params.userPrompt.toLowerCase().includes('ralie')
+
+    const formatExpectation = isCodeOrAppRequest
+      ? `FORMAT DE RÉPONSE STRICTEMENT ATTENDU (en français) :
+Ligne 1 : [PAROLE] : Une seule phrase courte, vivante et directe (18 à 28 mots max) annonçant le jeu ou l'application interactive créée.
+Lignes suivantes : [CONTRIBUTION] :
+- Présentation courte des règles et des contrôles.
+- L'INTÉGRALITÉ DU CODE EXÉCUTABLE DANS UN SEUL BLOC \`\`\`html complet (avec balises doctype, head, style, body, script, entièrement jouable immédiatement). NE FAIS AUCUN COMMENTAIRE DU GENRE "// reste du code", FOURNIS LE CODE 100% COMPLET !`
+      : `FORMAT DE RÉPONSE STRICTEMENT ATTENDU (en français) :
+Ligne 1 : [PAROLE] : Une seule phrase courte, vivante et directe (18 à 28 mots max) résumant ta découverte ou ton action concrète sur ce sujet précis (sans guillemets).
+Lignes suivantes : [CONTRIBUTION] : Ton travail d'expert structuré, concis et directement utile (3 à 6 puces ou paragraphes courts avec titres en gras).`
+
     const promptForStep = `${params.stepInstruction}
 
 DEMANDE DU VISITEUR :
 "${params.userPrompt}"
 ${params.previousContributions ? `\nTRAVAUX PRÉCÉDENTS REÇUS EN RELAIS :\n${params.previousContributions}\n` : ''}
-FORMAT DE RÉPONSE STRICTEMENT ATTENDU (en français) :
-Ligne 1 : [PAROLE] : Une seule phrase courte, vivante et directe (18 à 28 mots max) résumant ta découverte ou ton action concrète sur ce sujet précis (sans guillemets).
-Lignes suivantes : [CONTRIBUTION] : Ton travail d'expert structuré, concis et directement utile (3 à 6 puces ou paragraphes courts avec titres en gras).`
+${formatExpectation}`
 
     const aiReq: AIRequest = {
       prompt: promptForStep,

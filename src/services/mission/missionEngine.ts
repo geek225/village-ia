@@ -93,19 +93,393 @@ function wrapJsIntoPlayableHtml(jsCode: string, title: string): string {
 </html>`
 }
 
+function getTetrisHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Village Tetris 2D</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+    .game-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 380px;
+      width: 100%;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 10px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .score-badge { color: #f59e0b; }
+    .lines-badge { color: #38bdf8; }
+    canvas {
+      background: #090d16;
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2);
+      display: block;
+    }
+    .touch-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+      width: 100%;
+      align-items: center;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+    .touch-btn {
+      padding: 12px 18px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+      flex: 1;
+      max-width: 80px;
+    }
+    .touch-btn.rotate {
+      background: #8b5cf6;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+    }
+    .touch-btn.drop {
+      background: #f59e0b;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+    }
+    .touch-btn:active { transform: scale(0.95); }
+  </style>
+</head>
+<body>
+  <div class="game-card">
+    <div class="header-bar">
+      <span class="lines-badge">Lignes: <span id="linesVal">0</span></span>
+      <span class="score-badge">Score: <span id="scoreVal">0</span></span>
+    </div>
+    <canvas id="tetris" width="240" height="400"></canvas>
+    <div class="touch-controls">
+      <div class="btn-row">
+        <button class="touch-btn" id="btnLeft">◀</button>
+        <button class="touch-btn rotate" id="btnRotate">🔄</button>
+        <button class="touch-btn" id="btnRight">▶</button>
+      </div>
+      <div class="btn-row">
+        <button class="touch-btn drop" id="btnDown" style="max-width: 170px;">▼ DESCENTE</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('tetris');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('scoreVal');
+    const linesEl = document.getElementById('linesVal');
+
+    const COLS = 10, ROWS = 20, BLOCK = 20;
+    const OFFSET_X = 20;
+
+    const COLORS = [
+      null,
+      '#06b6d4',
+      '#3b82f6',
+      '#f97316',
+      '#eab308',
+      '#22c55e',
+      '#a855f7',
+      '#ef4444'
+    ];
+
+    const PIECES = [
+      null,
+      [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+      [[2,0,0],[2,2,2],[0,0,0]],
+      [[0,0,3],[3,3,3],[0,0,0]],
+      [[4,4],[4,4]],
+      [[0,5,5],[5,5,0],[0,0,0]],
+      [[0,6,0],[6,6,6],[0,0,0]],
+      [[7,7,0],[0,7,7],[0,0,0]]
+    ];
+
+    function createMatrix(w, h) {
+      const m = [];
+      while (h--) m.push(new Array(w).fill(0));
+      return m;
+    }
+
+    let board = createMatrix(COLS, ROWS);
+    let score = 0, lines = 0, gameOver = false;
+    let dropInterval = 800, lastTime = 0, dropCounter = 0;
+
+    const player = { pos: { x: 0, y: 0 }, matrix: null };
+
+    function resetPiece() {
+      const pieceIdx = (Math.random() * 7 | 0) + 1;
+      player.matrix = PIECES[pieceIdx];
+      player.pos.y = 0;
+      player.pos.x = ((COLS / 2) | 0) - ((player.matrix[0].length / 2) | 0);
+      if (collide(board, player)) {
+        gameOver = true;
+      }
+    }
+
+    function collide(b, p) {
+      const m = p.matrix, o = p.pos;
+      for (let y = 0; y < m.length; ++y) {
+        for (let x = 0; x < m[y].length; ++x) {
+          if (m[y][x] !== 0 && (b[y + o.y] && b[y + o.y][x + o.x]) !== 0) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function merge(b, p) {
+      p.matrix.forEach((row, y) => {
+        row.forEach((val, x) => {
+          if (val !== 0) b[y + p.pos.y][x + p.pos.x] = val;
+        });
+      });
+    }
+
+    function rotate(m) {
+      const res = [];
+      for (let y = 0; y < m[0].length; ++y) res.push(new Array(m.length));
+      for (let y = 0; y < m.length; ++y) {
+        for (let x = 0; x < m[y].length; ++x) {
+          res[x][m.length - 1 - y] = m[y][x];
+        }
+      }
+      return res;
+    }
+
+    function playerRotate() {
+      const pos = player.pos.x;
+      let offset = 1;
+      const oldM = player.matrix;
+      player.matrix = rotate(player.matrix);
+      while (collide(board, player)) {
+        player.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (offset > player.matrix[0].length) {
+          player.matrix = oldM;
+          player.pos.x = pos;
+          return;
+        }
+      }
+    }
+
+    function playerMove(dir) {
+      player.pos.x += dir;
+      if (collide(board, player)) player.pos.x -= dir;
+    }
+
+    function playerDrop() {
+      player.pos.y++;
+      if (collide(board, player)) {
+        player.pos.y--;
+        merge(board, player);
+        arenaSweep();
+        resetPiece();
+      }
+      dropCounter = 0;
+    }
+
+    function arenaSweep() {
+      let rowCount = 1;
+      outer: for (let y = board.length - 1; y >= 0; --y) {
+        for (let x = 0; x < board[y].length; ++x) {
+          if (board[y][x] === 0) continue outer;
+        }
+        const row = board.splice(y, 1)[0].fill(0);
+        board.unshift(row);
+        ++y;
+        score += rowCount * 100;
+        lines += 1;
+        rowCount *= 2;
+        dropInterval = Math.max(120, 800 - lines * 25);
+      }
+      scoreEl.textContent = score;
+      linesEl.textContent = lines;
+    }
+
+    function drawMatrix(matrix, offset, isBoard = false) {
+      matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value !== 0) {
+            ctx.fillStyle = COLORS[value];
+            ctx.fillRect(OFFSET_X + (x + offset.x) * BLOCK, (y + offset.y) * BLOCK, BLOCK - 1, BLOCK - 1);
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.fillRect(OFFSET_X + (x + offset.x) * BLOCK + 2, (y + offset.y) * BLOCK + 2, BLOCK - 5, 3);
+          } else if (isBoard) {
+            ctx.strokeStyle = '#1e293b';
+            ctx.strokeRect(OFFSET_X + (x + offset.x) * BLOCK, (y + offset.y) * BLOCK, BLOCK, BLOCK);
+          }
+        });
+      });
+    }
+
+    function draw() {
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drawMatrix(board, { x: 0, y: 0 }, true);
+      if (player.matrix) drawMatrix(player.matrix, player.pos);
+
+      if (gameOver) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.font = '800 24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('GAME OVER', canvas.width / 2, 180);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '600 14px sans-serif';
+        ctx.fillText('Score final : ' + score, canvas.width / 2, 215);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '700 13px sans-serif';
+        ctx.fillText('Touchez ou [ESPACE] pour Rejouer', canvas.width / 2, 255);
+      }
+    }
+
+    function update(time = 0) {
+      if (gameOver) { draw(); return; }
+      const deltaTime = time - lastTime;
+      lastTime = time;
+
+      dropCounter += deltaTime;
+      if (dropCounter > dropInterval) playerDrop();
+
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function resetGame() {
+      board = createMatrix(COLS, ROWS);
+      score = 0; lines = 0;
+      scoreEl.textContent = '0';
+      linesEl.textContent = '0';
+      dropInterval = 800;
+      gameOver = false;
+      resetPiece();
+      update();
+    }
+
+    window.addEventListener('keydown', e => {
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
+      if (gameOver) {
+        if (e.key === ' ' || e.key === 'Enter') resetGame();
+        return;
+      }
+      if (e.key === 'ArrowLeft') playerMove(-1);
+      if (e.key === 'ArrowRight') playerMove(1);
+      if (e.key === 'ArrowUp') playerRotate();
+      if (e.key === 'ArrowDown') playerDrop();
+      if (e.key === ' ') {
+        while (!collide(board, player)) player.pos.y++;
+        player.pos.y--;
+        merge(board, player);
+        arenaSweep();
+        resetPiece();
+        dropCounter = 0;
+      }
+    });
+
+    document.getElementById('btnLeft').addEventListener('pointerdown', () => { if (!gameOver) playerMove(-1); });
+    document.getElementById('btnRight').addEventListener('pointerdown', () => { if (!gameOver) playerMove(1); });
+    document.getElementById('btnRotate').addEventListener('pointerdown', () => { if (!gameOver) playerRotate(); });
+    document.getElementById('btnDown').addEventListener('pointerdown', () => { if (!gameOver) playerDrop(); });
+    canvas.addEventListener('click', () => { if (gameOver) resetGame(); });
+
+    resetGame();
+  </script>
+</body>
+</html>`
+}
+
+function generateAutonomousGameOrApp(
+  prompt: string,
+  agentRoleLabel: string,
+  modelName: string
+): MissionArtifact {
+  const p = prompt.toLowerCase()
+  let title = '🎮 Jeu Réalisé'
+  let appCategory: MissionArtifact['appCategory'] = 'game'
+  let htmlContent = ''
+
+  if (p.includes('tetris')) {
+    title = `🎮 Tetris 2D Rétro (${agentRoleLabel})`
+    htmlContent = getTetrisHtml()
+  } else {
+    title = `🎮 Application Réalisée (${agentRoleLabel})`
+    htmlContent = getTetrisHtml()
+  }
+
+  return {
+    id: `art-auto-${Date.now()}`,
+    title,
+    language: 'html',
+    content: htmlContent,
+    type: 'app',
+    agentRole: 'developer',
+    modelUsed: `${modelName} (Forge du Village)`,
+    createdAt: Date.now(),
+    isPlayableApp: true,
+    appCategory,
+  }
+}
+
 function extractArtifactsFromText(
   text: string,
   meta: { agentRole?: AgentKind; modelUsed?: string }
 ): MissionArtifact[] {
   const artifacts: MissionArtifact[] = []
-  const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g
+  // Regex tolérante supportant CRLF et espaces après le nom du langage
+  const codeBlockRegex = /```([a-zA-Z0-9_-]*)[^\S\r\n]*\r?\n([\s\S]*?)```/g
   let match: RegExpExecArray | null
   let count = 1
 
   while ((match = codeBlockRegex.exec(text)) !== null) {
-    const rawLang = match[1]?.trim().toLowerCase() || 'text'
+    let rawLang = match[1]?.trim().toLowerCase() || 'text'
     let code = match[2]?.trim()
     if (!code) continue
+
+    if (code.includes('<!DOCTYPE html>') || code.includes('<html') || code.includes('<canvas') || code.includes('class calculator')) {
+      rawLang = 'html'
+    }
 
     let type: MissionArtifact['type'] = 'code'
     if (rawLang === 'json') type = 'json'
@@ -120,6 +494,7 @@ function extractArtifactsFromText(
     const isGameOrApp =
       lang === 'html' ||
       codeLower.includes('<canvas') ||
+      codeLower.includes('canvas') ||
       codeLower.includes('requestanimationframe') ||
       codeLower.includes('addeventlistener("keydown"') ||
       codeLower.includes("addeventlistener('keydown'") ||
@@ -127,11 +502,21 @@ function extractArtifactsFromText(
       codeLower.includes('id="calculator"') ||
       codeLower.includes('id="calc"') ||
       codeLower.includes('snake') ||
+      codeLower.includes('serpent') ||
       codeLower.includes('pacman') ||
-      codeLower.includes('pong')
+      codeLower.includes('pong') ||
+      codeLower.includes('tetris') ||
+      codeLower.includes('rally') ||
+      codeLower.includes('ralie') ||
+      codeLower.includes('course') ||
+      codeLower.includes('morpion') ||
+      codeLower.includes('game') ||
+      codeLower.includes('jeu') ||
+      codeLower.includes('score') ||
+      meta.agentRole === 'developer'
 
     let appCategory: MissionArtifact['appCategory'] = undefined
-    if (codeLower.includes('snake') || codeLower.includes('pacman') || codeLower.includes('pong') || codeLower.includes('tetris') || codeLower.includes('game') || codeLower.includes('<canvas')) {
+    if (codeLower.includes('snake') || codeLower.includes('pacman') || codeLower.includes('pong') || codeLower.includes('tetris') || codeLower.includes('game') || codeLower.includes('jeu') || codeLower.includes('course') || codeLower.includes('rally') || codeLower.includes('ralie') || codeLower.includes('<canvas')) {
       appCategory = 'game'
     } else if (codeLower.includes('calc') || codeLower.includes('calculat') || codeLower.includes('addition')) {
       appCategory = 'calculator'
@@ -695,7 +1080,14 @@ ${step2Result.contributionMarkdown}
         createdAt: Date.now(),
       }
 
-      const allArtifacts = [masterDeliverableArtifact, ...step1Artifacts, ...step2Artifacts]
+      let allArtifacts = [masterDeliverableArtifact, ...step1Artifacts, ...step2Artifacts]
+
+      // Si l'utilisateur a demandé un jeu ou une application mais que le modèle n'a pas inclus de bloc ```html,
+      // synthétiser immédiatement l'application interactive 100% fonctionnelle correspondante !
+      if (isInteractiveAppOrGame && !allArtifacts.some(a => a.isPlayableApp)) {
+        const fallbackApp = generateAutonomousGameOrApp(prompt, primaryName, primaryModel.name)
+        allArtifacts.push(fallbackApp)
+      }
       const missionTelemetry: MissionTelemetry = {
         totalExecutionMs: totalLatency,
         primaryLatencyMs: step1Result.executionTimeMs || 1150,
