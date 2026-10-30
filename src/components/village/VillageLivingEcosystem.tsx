@@ -17,7 +17,9 @@ export function VillageLivingEcosystem({ isThinkingOrWorking = false }: VillageL
   useEffect(() => {
     const triggerFish = () => {
       setFishJumping(true)
-      villageSoundscape.playWaterSplash()
+      if (villageSoundscape.getIsEnabled()) {
+        villageSoundscape.playWaterSplash()
+      }
       setTimeout(() => setFishJumping(false), 1400)
     }
 

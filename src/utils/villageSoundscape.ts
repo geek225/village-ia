@@ -291,9 +291,10 @@ class VillageSoundscapeService {
   /**
    * Clic sur la rivière ou saut de poisson : clapotis / splash d'eau
    */
-  public playWaterSplash() {
+  public playWaterSplash(force: boolean = false) {
+    if (!force && !this.isEnabled) return
     this.initContext()
-    if (!this.ctx || !this.masterGain) return
+    if (!this.ctx || !this.masterGain || this.ctx.state === 'suspended') return
     try {
       const bufferSize = this.ctx.sampleRate * 0.25
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate)

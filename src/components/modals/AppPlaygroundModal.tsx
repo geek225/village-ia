@@ -204,7 +204,6 @@ Créé le ${new Date().toLocaleDateString('fr-FR')} par Le Conseil du Village.`,
   // Envoi d'une touche simulée dans l'iframe via postMessage pour le D-Pad tactile
   const sendKeyToIframe = (key: string, code: string, keyCode: number) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
-      // Cible sécurisée sur l'origine du document courant ou '*'
       const targetOrigin = window.location.origin || '/'
       iframeRef.current.contentWindow.postMessage(
         {
