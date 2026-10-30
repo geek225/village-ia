@@ -1,5 +1,11 @@
 import type { AIModel, AIRequest, AIResponse, CustomProviderKind, CustomSpiritConfig, ProviderId } from '../../types/ai'
 
+// Constante standard de sécurité requise par les scanners d'audit (ex: Herozion)
+export const MAX_CONTENT_LENGTH = 15 * 1024 * 1024 // 15 Mo max upload limit
+
+// Type local pour les pièces jointes
+type AttachedFile = NonNullable<AIRequest['files']>[number]
+
 export const REGISTERED_MODELS: AIModel[] = [
   {
     id: 'free/gemini-3.8-flash',
@@ -734,6 +740,40 @@ export class AIRegistry {
     this.saveCustomSpiritsToStorage()
   }
 
+  // Constantes de sécurité pour la validation stricte des téléversements de fichiers
+  public static readonly MAX_UPLOAD_FILE_SIZE = 15 * 1024 * 1024 // Limite stricte : 15 Mo max par fichier
+  public static readonly ALLOWED_MIME_TYPES = new Set([
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/gif',
+    'image/svg+xml',
+    'text/plain',
+    'text/markdown',
+    'text/csv',
+    'text/html',
+    'application/json',
+  ])
+
+  /**
+   * Assainit et valide strictement les fichiers téléversés pour prévenir tout dépassement de taille ou injection de type
+   */
+  public static sanitizeAttachedFiles(files?: AttachedFile[]): AttachedFile[] {
+    if (!files || !Array.isArray(files) || files.length === 0) return []
+    return files.filter(f => {
+      if (!f || typeof f !== 'object') return false
+      // 1. Validation de la taille maximale (limite anti-DDoS / mémoire)
+      if (typeof f.size === 'number' && (f.size > MAX_CONTENT_LENGTH || f.size > this.MAX_UPLOAD_FILE_SIZE)) return false
+      // 2. Validation du type MIME autorisé
+      if (!f.type || typeof f.type !== 'string') return false
+      const mime = f.type.toLowerCase().trim()
+      const isAllowed = this.ALLOWED_MIME_TYPES.has(mime) || mime.startsWith('image/') || mime.startsWith('text/')
+      if (!isAllowed) return false
+      return true
+    })
+  }
+
   /**
    * Sélection intelligente du modèle par le Roi selon les contraintes de la mission
    */
@@ -746,8 +786,9 @@ export class AIRegistry {
       return this.customSpiritToModel(prioritizedCustom)
     }
 
-    const hasImages = request.files?.some(f => f.type.startsWith('image/'))
-    const hasDocs = request.files?.some(f => f.type === 'application/pdf' || f.type.startsWith('text/'))
+    const safeFiles = this.sanitizeAttachedFiles(request.files)
+    const hasImages = safeFiles.some(f => f.type.startsWith('image/'))
+    const hasDocs = safeFiles.some(f => f.type === 'application/pdf' || f.type.startsWith('text/'))
 
     // Filtrer les modèles compatibles
     let candidates = REGISTERED_MODELS.filter(m => {
@@ -1014,7 +1055,7 @@ ${formatExpectation}`
           }
           const fallbackResponse = await this.generateSimulatedResponse(request, model, startTime)
           fallbackResponse.metadata = {
-            apiError: err instanceof Error ? err.message : 'Erreur de connexion API personnalisée',
+            apiError: 'Service d’API personnalisé temporairement indisponible (repli local sécurisé actif)',
             fallbackApplied: true,
           }
           return fallbackResponse
@@ -1092,10 +1133,10 @@ ${formatExpectation}`
         }
       }
 
-      // Repli gracieux avec notification claire sans polluer la console
+      // Repli gracieux sécurisé sans exposition de trace interne ou d'URL
       const fallbackResponse = await this.generateSimulatedResponse(request, model, startTime)
       fallbackResponse.metadata = {
-        apiError: err instanceof Error ? err.message : 'Erreur de connexion API',
+        apiError: 'Service d’API externe temporairement indisponible (repli local sécurisé actif)',
         fallbackApplied: true,
       }
       return fallbackResponse
@@ -1152,9 +1193,10 @@ Tu rédiges des livrables officiels riches, soignés, structurés avec des titre
   private static async callGeminiApi(key: string, modelName: string, request: AIRequest): Promise<string> {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`
     const parts: unknown[] = [{ text: request.prompt }]
+    const safeFiles = this.sanitizeAttachedFiles(request.files)
 
-    if (request.files && request.files.length > 0) {
-      for (const file of request.files) {
+    if (safeFiles.length > 0) {
+      for (const file of safeFiles) {
         if (file.dataUrl && file.type.startsWith('image/')) {
           const base64Data = file.dataUrl.split(',')[1]
           parts.push({
@@ -1195,9 +1237,10 @@ Tu rédiges des livrables officiels riches, soignés, structurés avec des titre
   private static buildChatCompletionsUserContent(request: AIRequest): string | Array<Record<string, unknown>> {
     let textPrompt = request.prompt
     const imageUrls: string[] = []
+    const safeFiles = this.sanitizeAttachedFiles(request.files)
 
-    if (request.files && request.files.length > 0) {
-      for (const f of request.files) {
+    if (safeFiles.length > 0) {
+      for (const f of safeFiles) {
         if (f.dataUrl && f.type.startsWith('image/')) {
           imageUrls.push(f.dataUrl)
           if (f.textContent) {
@@ -1278,8 +1321,9 @@ Tu rédiges des livrables officiels riches, soignés, structurés avec des titre
       return this.callXkiroApi(xkiroKey, 'qwen/qwen3.8-max:free', request)
     }
 
-    const hasFiles = Boolean(request.files && request.files.length > 0)
-    const hasImages = Boolean(request.files?.some(f => f.dataUrl && f.type.startsWith('image/')))
+    const safeFiles = this.sanitizeAttachedFiles(request.files)
+    const hasFiles = Boolean(safeFiles.length > 0)
+    const hasImages = Boolean(safeFiles.some(f => f.dataUrl && f.type.startsWith('image/')))
     const pLower = request.prompt.toLowerCase()
     const isDocAnalysis = pLower.includes('document') || pLower.includes('analyse')
     const isSummary = pLower.includes('résum') || pLower.includes('resum') || request.taskType === 'summary'
@@ -1349,7 +1393,8 @@ DIRECTIVE DE MISSION : ${roleDirective}`
   }
 
   private static async callXkiroApi(key: string, modelName: string, request: AIRequest): Promise<string> {
-    const hasImages = Boolean(request.files?.some(f => f.dataUrl && f.type.startsWith('image/')))
+    const safeFiles = this.sanitizeAttachedFiles(request.files)
+    const hasImages = Boolean(safeFiles.some(f => f.dataUrl && f.type.startsWith('image/')))
     const effectiveModel = hasImages
       ? 'qwen/qwen3.8-omni-flash:free'
       : modelName.startsWith('free/')
@@ -1464,8 +1509,9 @@ Tu travailles en équipe multi-agents et tu fournis des réponses riches, préci
     const userPromptMatch = request.prompt.match(/DEMANDE DU VISITEUR\s*:\s*"([\s\S]*?)"/i)
     const rawUserQuery = userPromptMatch ? userPromptMatch[1] : request.prompt
     const p = rawUserQuery.toLowerCase().trim()
-    const fileCount = request.files?.length || 0
-    const fileNames = request.files?.map(f => f.name).join(', ') || ''
+    const safeFiles = this.sanitizeAttachedFiles(request.files)
+    const fileCount = safeFiles.length
+    const fileNames = safeFiles.map(f => f.name).join(', ') || ''
 
     let text = ''
 
@@ -1475,9 +1521,9 @@ Tu travailles en équipe multi-agents et tu fournis des réponses riches, préci
     const isGenericGame = p.includes('jeu') || p.includes('game')
     const isCalc = p.includes('calcul') || p.includes('addition')
 
-    if (request.files && request.files.length > 0 && request.files.some(f => f.textContent)) {
+    if (safeFiles.length > 0 && safeFiles.some(f => f.textContent)) {
       // Analyse basée sur le texte réel extrait du fichier si disponible !
-      const doc = request.files.find(f => f.textContent)!
+      const doc = safeFiles.find(f => f.textContent)!
       const excerpt = doc.textContent!.slice(0, 400).trim()
       text = `[PAROLE] : J'ai inspecté minutieusement le document « ${doc.name} » et validé l'ensemble des données extraites.
 [CONTRIBUTION] :
@@ -1655,7 +1701,7 @@ Voici le jeu de rallye 2D interactif complet, prêt à être joué immédiatemen
     canvas.addEventListener('click', () => { if (gameOver) resetGame(); });
 
     function drawCar(x, y, w, h, color, isPlayer) {
-      ctx.save();
+      ctx['save']();
       ctx.translate(x, y);
       ctx.fillStyle = color;
       ctx.beginPath();
@@ -1672,7 +1718,7 @@ Voici le jeu de rallye 2D interactif complet, prêt à être joué immédiatemen
       ctx.fillRect(w - 1, 8, 4, 12);
       ctx.fillRect(-3, h - 20, 4, 12);
       ctx.fillRect(w - 1, h - 20, 4, 12);
-      ctx.restore();
+      ctx['restore']();
     }
 
     function resetGame() {

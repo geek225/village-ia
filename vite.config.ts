@@ -10,13 +10,6 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
         rewrite: path => path.replace(/^\/api\/agnes/, ''),
-        configure: proxy => {
-          proxy.on('proxyRes', proxyRes => {
-            delete proxyRes.headers['set-cookie']
-            delete proxyRes.headers['cross-origin-resource-policy']
-            delete proxyRes.headers['cross-origin-opener-policy']
-          })
-        },
       },
     },
   },

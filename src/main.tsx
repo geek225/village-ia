@@ -12,14 +12,16 @@ if ('serviceWorker' in navigator) {
       }
     }).catch(() => {})
   } else {
-    window.addEventListener('load', () => {
+    const handleLoad = () => {
+      window.removeEventListener('load', handleLoad)
       navigator.serviceWorker
         .register('/sw.js')
         .then(reg => {
           reg.update().catch(() => {})
         })
         .catch(() => {})
-    })
+    }
+    window.addEventListener('load', handleLoad, { once: true })
   }
 }
 
