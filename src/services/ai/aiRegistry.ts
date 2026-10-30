@@ -1437,25 +1437,697 @@ Tu travailles en équipe multi-agents et tu fournis des réponses riches, préci
     // Délai réaliste de traitement
     await new Promise(resolve => setTimeout(resolve, 800))
 
-    const p = request.prompt.toLowerCase()
+    // Extraction propre de la demande réelle de l'utilisateur (sans être pollué par les instructions système)
+    const userPromptMatch = request.prompt.match(/DEMANDE DU VISITEUR\s*:\s*"([\s\S]*?)"/i)
+    const rawUserQuery = userPromptMatch ? userPromptMatch[1] : request.prompt
+    const p = rawUserQuery.toLowerCase().trim()
     const fileCount = request.files?.length || 0
     const fileNames = request.files?.map(f => f.name).join(', ') || ''
 
     let text = ''
 
+    const isRallyGame = p.includes('ralie') || p.includes('rally') || p.includes('course') || p.includes('voiture') || p.includes('racing') || p.includes('car')
+    const isSnakeGame = p.includes('serpent') || p.includes('snake')
+    const isPongGame = p.includes('pong') || p.includes('brique') || p.includes('casse') || p.includes('morpion') || p.includes('arcade')
+    const isGenericGame = p.includes('jeu') || p.includes('game')
+    const isCalc = p.includes('calcul') || p.includes('addition')
+
     if (request.files && request.files.length > 0 && request.files.some(f => f.textContent)) {
       // Analyse basée sur le texte réel extrait du fichier si disponible !
       const doc = request.files.find(f => f.textContent)!
       const excerpt = doc.textContent!.slice(0, 400).trim()
-      text = `### Synthèse de l'analyse documentaire\n\n**Fichier analysé :** \`${doc.name}\` (${Math.round(doc.size / 1024)} Ko)\n\n#### Points clés extraits :\n1. **Extrait pertinent :** « ${excerpt.replace(/\n+/g, ' ')}… »\n2. **Structure identifiée :** Document textuel structuré, prêt pour exploitation ou archivage.\n3. **Recommandation du Conseiller :** Les données sont conformes. Vous pouvez poursuivre votre démarche ou demander un approfondissement par section.`
+      text = `[PAROLE] : J'ai inspecté minutieusement le document « ${doc.name} » et validé l'ensemble des données extraites.
+[CONTRIBUTION] :
+### Synthèse de l'analyse documentaire
+
+**Fichier analysé :** \`${doc.name}\` (${Math.round(doc.size / 1024)} Ko)
+
+#### Points clés extraits :
+1. **Extrait pertinent :** « ${excerpt.replace(/\n+/g, ' ')}… »
+2. **Structure identifiée :** Document textuel structuré, prêt pour exploitation ou archivage.
+3. **Recommandation du Conseiller :** Les données sont conformes. Vous pouvez poursuivre votre démarche ou demander un approfondissement par section.`
     } else if (fileCount > 0) {
-      text = `### Rapport d'analyse — Village IA\n\n**Pièce(s) jointe(s) reçue(s) :** ${fileNames}\n\n#### 1. Constatations du Chercheur\n- Le document a été inspecté avec succès dans le village.\n- Les informations essentielles ont été répertoriées sans anomalie détectée.\n\n#### 2. Recommandations de la Notaire\n- Formalisation conforme aux exigences de synthèse.\n- Structure claire découpée en axes prioritaires.\n\n*(Note : Traitement exécuté en simulation locale haute fidélité. Configurez une clé API dans les Paramètres pour activer les appels de production).*`
+      text = `[PAROLE] : J'ai réceptionné les pièces jointes au village et rédigé le rapport de conformité technique.
+[CONTRIBUTION] :
+### Rapport d'analyse — Village IA
+
+**Pièce(s) jointe(s) reçue(s) :** ${fileNames}
+
+#### 1. Constatations du Chercheur
+- Le document a été inspecté avec succès dans le village.
+- Les informations essentielles ont été répertoriées sans anomalie détectée.
+
+#### 2. Recommandations de la Guérisseuse
+- Formalisation conforme aux exigences de synthèse.
+- Structure claire découpée en axes prioritaires.
+
+*(Note : Traitement exécuté en simulation locale haute fidélité. Configurez une clé API dans les Paramètres pour activer les appels de production).*`
+    } else if (isRallyGame) {
+      text = `[PAROLE] : J'ai codé un jeu de rallye 2D rétro complet avec défilement de route, bolides adverses, compteur de score et contrôles clavier ou tactiles !
+[CONTRIBUTION] :
+### 🏎️ Village Rally 2D — Mini-Jeu Rétro Réalisé par Le Développeur
+
+Voici le jeu de rallye 2D interactif complet, prêt à être joué immédiatement dans le Playground Grand Écran du Village !
+
+#### Fonctionnalités incluses :
+- **Pilotage fluide** : Contrôlez la voiture de rallye avec les flèches Gauche/Droite du clavier ou le D-Pad tactile.
+- **Circuit à grande vitesse** : Défilement vertical fluide avec lignes de route, bordures vibrantes et accélération progressive.
+- **Trafic & Obstacles** : Évitez les autres véhicules qui descendent la piste.
+- **Système de Score** : Distance parcourue en direct et compteur de vitesse.
+- **Mode Rejouer instantané** : Recommencez immédiatement en cas de collision.
+
+\`\`\`html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Village Rally 2D</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+    .game-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 420px;
+      width: 100%;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 12px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .score-badge { color: #f59e0b; }
+    .speed-badge { color: #38bdf8; }
+    canvas {
+      background: #182030;
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2);
+      display: block;
+    }
+    .touch-controls {
+      display: flex;
+      gap: 16px;
+      margin-top: 14px;
+      width: 100%;
+      justify-content: center;
+    }
+    .touch-btn {
+      flex: 1;
+      max-width: 140px;
+      padding: 12px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    }
+    .touch-btn:active { transform: scale(0.96); }
+  </style>
+</head>
+<body>
+  <div class="game-card">
+    <div class="header-bar">
+      <span class="speed-badge">⚡ Vitesse: <span id="speedVal">100</span> km/h</span>
+      <span class="score-badge">🏆 Score: <span id="scoreVal">0</span> m</span>
+    </div>
+    <canvas id="rallyCanvas" width="360" height="460"></canvas>
+    <div class="touch-controls">
+      <button class="touch-btn" id="btnLeft">◀ GAUCHE</button>
+      <button class="touch-btn" id="btnRight">DROITE ▶</button>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('rallyCanvas');
+    const ctx = canvas.getContext('2d');
+    const speedEl = document.getElementById('speedVal');
+    const scoreEl = document.getElementById('scoreVal');
+
+    let roadOffset = 0;
+    let score = 0;
+    let speed = 6;
+    let gameOver = false;
+
+    const player = {
+      x: 162,
+      y: 360,
+      w: 36,
+      h: 64,
+      color: '#ef4444'
+    };
+
+    let enemies = [];
+    let enemyTimer = 0;
+
+    function spawnEnemy() {
+      const lanes = [70, 130, 190, 250];
+      const lane = lanes[Math.floor(Math.random() * lanes.length)];
+      const colors = ['#38bdf8', '#10b981', '#f59e0b', '#ec4899'];
+      enemies.push({
+        x: lane,
+        y: -70,
+        w: 36,
+        h: 60,
+        speed: speed * 0.5 + Math.random() * 2,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      });
+    }
+
+    const keys = {};
+    window.addEventListener('keydown', e => {
+      keys[e.key] = true;
+      if (['ArrowLeft', 'ArrowRight', 'a', 'd', 'q'].includes(e.key)) e.preventDefault();
+      if (gameOver && (e.key === ' ' || e.key === 'Enter')) resetGame();
+    });
+    window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    document.getElementById('btnLeft').addEventListener('pointerdown', () => keys['ArrowLeft'] = true);
+    document.getElementById('btnLeft').addEventListener('pointerup', () => keys['ArrowLeft'] = false);
+    document.getElementById('btnRight').addEventListener('pointerdown', () => keys['ArrowRight'] = true);
+    document.getElementById('btnRight').addEventListener('pointerup', () => keys['ArrowRight'] = false);
+    canvas.addEventListener('click', () => { if (gameOver) resetGame(); });
+
+    function drawCar(x, y, w, h, color, isPlayer) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, w, h, 8);
+      ctx.fill();
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(4, 14, w - 8, 12);
+      ctx.fillRect(6, 40, w - 12, 8);
+      ctx.fillStyle = isPlayer ? '#fef08a' : '#f87171';
+      ctx.fillRect(3, 2, 8, 4);
+      ctx.fillRect(w - 11, 2, 8, 4);
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(-3, 8, 4, 12);
+      ctx.fillRect(w - 1, 8, 4, 12);
+      ctx.fillRect(-3, h - 20, 4, 12);
+      ctx.fillRect(w - 1, h - 20, 4, 12);
+      ctx.restore();
+    }
+
+    function resetGame() {
+      player.x = 162;
+      enemies = [];
+      score = 0;
+      speed = 6;
+      gameOver = false;
+      loop();
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      if (keys['ArrowLeft'] || keys['a'] || keys['q']) player.x -= 6;
+      if (keys['ArrowRight'] || keys['d']) player.x += 6;
+
+      if (player.x < 50) player.x = 50;
+      if (player.x > 274) player.x = 274;
+
+      roadOffset = (roadOffset + speed) % 40;
+      score += Math.round(speed * 0.2);
+      scoreEl.textContent = score;
+      speedEl.textContent = Math.round(speed * 18);
+
+      enemyTimer++;
+      if (enemyTimer > 60 - Math.min(speed * 2, 35)) {
+        spawnEnemy();
+        enemyTimer = 0;
+      }
+
+      speed = Math.min(6 + score * 0.003, 14);
+
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        e.y += speed - e.speed + 2;
+
+        if (
+          player.x < e.x + e.w &&
+          player.x + player.w > e.x &&
+          player.y < e.y + e.h &&
+          player.y + player.h > e.y
+        ) {
+          gameOver = true;
+        }
+
+        if (e.y > canvas.height + 80) {
+          enemies.splice(i, 1);
+        }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#166534';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(40, 0, 280, canvas.height);
+
+      for (let y = -40 + roadOffset; y < canvas.height + 40; y += 20) {
+        const color = Math.floor(y / 20) % 2 === 0 ? '#ef4444' : '#ffffff';
+        ctx.fillStyle = color;
+        ctx.fillRect(40, y, 8, 20);
+        ctx.fillRect(312, y, 8, 20);
+      }
+
+      ctx.fillStyle = '#ffffff';
+      for (let y = -40 + roadOffset; y < canvas.height + 40; y += 40) {
+        ctx.fillRect(130, y, 4, 20);
+        ctx.fillRect(220, y, 4, 20);
+      }
+
+      enemies.forEach(e => drawCar(e.x, e.y, e.w, e.h, e.color, false));
+      drawCar(player.x, player.y, player.w, player.h, player.color, true);
+
+      if (gameOver) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.font = '800 28px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('CRASH !', canvas.width / 2, 190);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '600 16px sans-serif';
+        ctx.fillText('Score final : ' + score + ' m', canvas.width / 2, 230);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '700 14px sans-serif';
+        ctx.fillText('Touchez ou [ESPACE] pour Rejouer', canvas.width / 2, 275);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      if (!gameOver) requestAnimationFrame(loop);
+    }
+
+    loop();
+  </script>
+</body>
+</html>
+\`\`\``
+    } else if (isSnakeGame) {
+      text = `[PAROLE] : J'ai créé un jeu de serpent Snake rétro avec grille animée, score et commandes fluides !
+[CONTRIBUTION] :
+### 🐍 Village Snake — Réalisé par Le Développeur
+
+Voici le jeu du serpent complet et jouable en direct :
+
+\`\`\`html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Village Snake</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      user-select: none;
+    }
+    .game-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .header { font-size: 16px; font-weight: 800; margin-bottom: 12px; color: #10b981; }
+    canvas { border: 2px solid #10b981; border-radius: 12px; background: #020617; }
+  </style>
+</head>
+<body>
+  <div class="game-card">
+    <div class="header">Score: <span id="scoreVal">0</span></div>
+    <canvas id="c" width="360" height="360"></canvas>
+  </div>
+  <script>
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d');
+    const grid = 18;
+    let snake = [{x: 180, y: 180}];
+    let dx = grid, dy = 0;
+    let food = {x: 90, y: 90};
+    let score = 0;
+    let over = false;
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'ArrowUp' && dy === 0) { dx = 0; dy = -grid; }
+      if (e.key === 'ArrowDown' && dy === 0) { dx = 0; dy = grid; }
+      if (e.key === 'ArrowLeft' && dx === 0) { dx = -grid; dy = 0; }
+      if (e.key === 'ArrowRight' && dx === 0) { dx = grid; dy = 0; }
+      if (over && (e.key === ' ' || e.key === 'Enter')) reset();
+    });
+
+    function reset() {
+      snake = [{x: 180, y: 180}];
+      dx = grid; dy = 0;
+      score = 0;
+      document.getElementById('scoreVal').textContent = '0';
+      over = false;
+      food = {x: Math.floor(Math.random()*19)*grid, y: Math.floor(Math.random()*19)*grid};
+    }
+
+    function step() {
+      if (over) return setTimeout(step, 100);
+      const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+      if (head.x < 0 || head.x >= 360 || head.y < 0 || head.y >= 360 || snake.some(s => s.x === head.x && s.y === head.y)) {
+        over = true;
+      } else {
+        snake.unshift(head);
+        if (head.x === food.x && head.y === food.y) {
+          score += 10;
+          document.getElementById('scoreVal').textContent = score;
+          food = {x: Math.floor(Math.random()*19)*grid, y: Math.floor(Math.random()*19)*grid};
+        } else {
+          snake.pop();
+        }
+      }
+
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, 360, 360);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(food.x, food.y, grid - 2, grid - 2);
+      ctx.fillStyle = '#10b981';
+      snake.forEach((s, idx) => {
+        ctx.fillStyle = idx === 0 ? '#34d399' : '#10b981';
+        ctx.fillRect(s.x, s.y, grid - 2, grid - 2);
+      });
+
+      if (over) {
+        ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        ctx.fillRect(0,0,360,360);
+        ctx.fillStyle = '#ef4444';
+        ctx.font = '700 24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('GAME OVER', 180, 170);
+        ctx.fillStyle = '#fff';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('Appuyez sur ESPACE pour rejouer', 180, 205);
+      }
+      setTimeout(step, 110);
+    }
+    step();
+  </script>
+</body>
+</html>
+\`\`\``
+    } else if (isCalc) {
+      text = `[PAROLE] : J'ai conçu une calculatrice moderne glassmorphism prête à l'emploi avec saisie tactile et clavier !
+[CONTRIBUTION] :
+### 📱 Calculatrice Moderne Réalisée par Le Développeur
+
+Voici l'application de calculatrice complète :
+
+\`\`\`html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculatrice Moderne</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .calculator {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 24px;
+      padding: 22px;
+      width: 320px;
+      max-width: 100%;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+    }
+    .display {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 16px;
+      text-align: right;
+      margin-bottom: 18px;
+    }
+    .history { font-size: 13px; color: #94a3b8; min-height: 18px; }
+    .current { font-size: 36px; font-weight: 700; color: #f8fafc; word-break: break-all; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    button {
+      padding: 14px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      background: #334155;
+      color: #f8fafc;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button:active { transform: scale(0.95); }
+    button.op { background: #2563eb; color: #fff; }
+    button.op:hover { background: #1d4ed8; }
+    button.eq { background: #f59e0b; color: #fff; }
+    button.eq:hover { background: #d97706; }
+    button.zero { grid-column: span 2; }
+    button.clear { background: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="calculator">
+    <div class="display">
+      <div class="history" id="hist"></div>
+      <div class="current" id="curr">0</div>
+    </div>
+    <div class="grid">
+      <button class="clear" onclick="clearAll()">AC</button>
+      <button onclick="append('+/-')">+/-</button>
+      <button onclick="append('%')">%</button>
+      <button class="op" onclick="setOp('/')">÷</button>
+      <button onclick="append('7')">7</button>
+      <button onclick="append('8')">8</button>
+      <button onclick="append('9')">9</button>
+      <button class="op" onclick="setOp('*')">×</button>
+      <button onclick="append('4')">4</button>
+      <button onclick="append('5')">5</button>
+      <button onclick="append('6')">6</button>
+      <button class="op" onclick="setOp('-')">-</button>
+      <button onclick="append('1')">1</button>
+      <button onclick="append('2')">2</button>
+      <button onclick="append('3')">3</button>
+      <button class="op" onclick="setOp('+')">+</button>
+      <button class="zero" onclick="append('0')">0</button>
+      <button onclick="append('.')">.</button>
+      <button class="eq" onclick="calculate()">=</button>
+    </div>
+  </div>
+  <script>
+    let current = '0', previous = '', operator = null;
+    const currEl = document.getElementById('curr');
+    const histEl = document.getElementById('hist');
+
+    function update() {
+      currEl.textContent = current;
+      histEl.textContent = previous ? (previous + ' ' + operator) : '';
+    }
+    function append(val) {
+      if (val === '+/-') { current = String(-parseFloat(current) || 0); update(); return; }
+      if (val === '%') { current = String(parseFloat(current) / 100); update(); return; }
+      if (val === '.' && current.includes('.')) return;
+      current = current === '0' && val !== '.' ? val : current + val;
+      update();
+    }
+    function setOp(op) {
+      if (previous && operator) calculate();
+      operator = op;
+      previous = current;
+      current = '0';
+      update();
+    }
+    function calculate() {
+      if (!operator || !previous) return;
+      const a = parseFloat(previous), b = parseFloat(current);
+      let res = 0;
+      if (operator === '+') res = a + b;
+      if (operator === '-') res = a - b;
+      if (operator === '*') res = a * b;
+      if (operator === '/') res = b !== 0 ? a / b : 'Erreur';
+      current = String(res);
+      previous = '';
+      operator = null;
+      update();
+    }
+    function clearAll() {
+      current = '0'; previous = ''; operator = null; update();
+    }
+  </script>
+</body>
+</html>
+\`\`\``
+    } else if (isPongGame || isGenericGame) {
+      text = `[PAROLE] : J'ai codé un jeu d'arcade 2D complet avec raquette, balle et briques destructibles !
+[CONTRIBUTION] :
+### 🕹️ Village Arcade — Réalisé par Le Développeur
+
+Voici le jeu interactif d'arcade prêt pour le Playground :
+
+\`\`\`html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Village Breakout Arcade</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      user-select: none;
+    }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 16px; }
+    canvas { background: #020617; border: 2px solid #38bdf8; border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="margin-bottom: 10px; font-weight: 700; color: #38bdf8;">Score: <span id="sc">0</span></div>
+    <canvas id="c" width="360" height="420"></canvas>
+  </div>
+  <script>
+    const c = document.getElementById('c'), ctx = c.getContext('2d');
+    let x = 180, y = 300, dx = 3, dy = -3, r = 7;
+    let padW = 75, padX = 142;
+    let score = 0;
+    const bricks = [];
+    for (let r = 0; r < 4; r++) {
+      for (let cl = 0; cl < 5; cl++) {
+        bricks.push({ x: 30 + cl * 62, y: 30 + r * 24, w: 54, h: 18, alive: true });
+      }
+    }
+    window.addEventListener('mousemove', e => {
+      const rect = c.getBoundingClientRect();
+      padX = Math.max(0, Math.min(c.width - padW, e.clientX - rect.left - padW / 2));
+    });
+    window.addEventListener('touchmove', e => {
+      const rect = c.getBoundingClientRect();
+      padX = Math.max(0, Math.min(c.width - padW, e.touches[0].clientX - rect.left - padW / 2));
+    });
+    function loop() {
+      x += dx; y += dy;
+      if (x - r < 0 || x + r > c.width) dx = -dx;
+      if (y - r < 0) dy = -dy;
+      if (y + r > c.height - 25 && x > padX && x < padX + padW) dy = -Math.abs(dy);
+      if (y + r > c.height) { x = 180; y = 250; dy = -3; }
+
+      bricks.forEach(b => {
+        if (b.alive && x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h) {
+          b.alive = false; dy = -dy; score += 10;
+          document.getElementById('sc').textContent = score;
+        }
+      });
+
+      ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.fillStyle = '#f59e0b';
+      bricks.forEach(b => { if (b.alive) ctx.fillRect(b.x, b.y, b.w, b.h); });
+      ctx.fillStyle = '#38bdf8'; ctx.fillRect(padX, c.height - 20, padW, 10);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+</body>
+</html>
+\`\`\``
     } else if (p.includes('résum') || p.includes('resum')) {
-      text = `### Résumé synthétique\n\nVoici les points cardinaux retenus par le Conseil du Village :\n\n- **Axe principal :** Clarification des objectifs stratégiques.\n- **Points d'action :** Hiérarchisation des tâches et allocation aux spécialistes compétents.\n- **Conclusion :** Solution optimale identifiée avec un niveau de confiance élevé.`
+      text = `[PAROLE] : J'ai structuré les enseignements essentiels et formulé les trois axes stratégiques.
+[CONTRIBUTION] :
+### Résumé synthétique
+
+Voici les points cardinaux retenus par le Conseil du Village :
+
+- **Axe principal :** Clarification des objectifs stratégiques.
+- **Points d'action :** Hiérarchisation des tâches et allocation aux spécialistes compétents.
+- **Conclusion :** Solution optimale identifiée avec un niveau de confiance élevé.`
     } else if (p.includes('tradui') || p.includes('translat')) {
-      text = `### Traduction & Formulation élégante\n\nVoici la version transposée dans un style fluide et naturel :\n\n> *« La sagesse d'un projet réside dans l'harmonie entre sa vision et la précision de son exécution. »*\n\nLes nuances de contexte et les termes techniques ont été préservés.`
+      text = `[PAROLE] : J'ai transposé votre texte dans une formulation fluide qui en préserve toutes les nuances.
+[CONTRIBUTION] :
+### Traduction & Formulation élégante
+
+Voici la version transposée dans un style fluide et naturel :
+
+> *« La sagesse d'un projet réside dans l'harmonie entre sa vision et la précision de son exécution. »*
+
+Les nuances de contexte et les termes techniques ont été préservés.`
     } else {
-      text = `### Réponse coordonnée du Village IA\n\nSuite à la consultation orchestrée par **Le Roi** auprès du modèle **${model.name}** :\n\n1. **Analyse de la demande :** « ${request.prompt} »\n2. **Diagnostic des spécialistes :** Le Chercheur a extrait les éléments déterminants, tandis que la Notaire a validé la cohérence de l'ensemble.\n3. **Plan d'action suggéré :**\n   - Valider les hypothèses présentées.\n   - Appliquer la méthode par étapes successives.\n   - Suivre les métriques de résultat dans le journal de mission.\n\n*(Résultat fourni via le système d'orchestration multi-agents du Village IA).*`
+      text = `[PAROLE] : J'ai coordonné l'analyse avec les spécialistes et validé le plan d'action optimal.
+[CONTRIBUTION] :
+### Réponse coordonnée du Village IA
+
+Suite à la consultation orchestrée par **Le Roi** auprès du modèle **${model.name}** :
+
+1. **Analyse de la demande :** « ${rawUserQuery} »
+2. **Diagnostic des spécialistes :** Le Chercheur a extrait les éléments déterminants, tandis que la Notaire a validé la cohérence de l'ensemble.
+3. **Plan d'action suggéré :**
+   - Valider les hypothèses présentées.
+   - Appliquer la méthode par étapes successives.
+   - Suivre les métriques de résultat dans le journal de mission.
+
+*(Résultat fourni via le système d'orchestration multi-agents du Village IA).*`
     }
 
     return {
