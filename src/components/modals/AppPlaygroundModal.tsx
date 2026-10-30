@@ -201,19 +201,35 @@ Créé le ${new Date().toLocaleDateString('fr-FR')} par Le Conseil du Village.`,
     downloadZip(`${rawName}.zip`, files)
   }
 
-  // Envoi d'une touche simulée dans l'iframe via postMessage pour le D-Pad tactile
+  // Envoi d'une touche simulée dans l'iframe pour le D-Pad tactile
   const sendKeyToIframe = (key: string, code: string, keyCode: number) => {
-    if (iframeRef.current && iframeRef.current.contentWindow) {
-      const targetOrigin = window.location.origin || '/'
-      iframeRef.current.contentWindow.postMessage(
-        {
-          type: 'VILLAGE_SIMULATE_KEY',
-          key,
-          code,
-          keyCode,
-        },
-        targetOrigin
-      )
+    if (iframeRef.current) {
+      try {
+        const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document
+        if (doc) {
+          const eventDown = new KeyboardEvent('keydown', { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true })
+          doc.dispatchEvent(eventDown)
+          window.setTimeout(() => {
+            const eventUp = new KeyboardEvent('keyup', { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true })
+            doc.dispatchEvent(eventUp)
+          }, 80)
+          return
+        }
+      } catch {
+        // Fallback postMessage transparent si accès direct bloqué
+      }
+
+      if (iframeRef.current.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: 'VILLAGE_SIMULATE_KEY',
+            key,
+            code,
+            keyCode,
+          },
+          window.location.origin || '/'
+        )
+      }
     }
   }
 

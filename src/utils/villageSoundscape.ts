@@ -27,8 +27,8 @@ class VillageSoundscapeService {
         this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime)
         this.masterGain.connect(this.ctx.destination)
       }
-    } catch (e) {
-      console.warn('AudioContext non supporté', e)
+    } catch {
+      // AudioContext non supporté ou bloqué par le navigateur
     }
   }
 
